@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Game Dashboard // Cyber Metrics</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #060908;
+        }
+        .font-mono-code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Grid Background Effect */
+        .bg-cyber-grid {
+            background-size: 36px 36px;
+            background-image: 
+                linear-gradient(to right, rgba(16, 185, 129, 0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(16, 185, 129, 0.04) 1px, transparent 1px);
+        }
+        /* Glassmorphic Cards */
+        .glass-card {
+            background: rgba(13, 20, 17, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            border-color: rgba(16, 185, 129, 0.4);
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.08);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #060908;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #10b98133;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #10b98166;
+        }
+    </style>
+</head>
+<body class="bg-cyber-grid text-gray-200 min-h-screen relative overflow-x-hidden antialiased">
+
+    <!-- Ambient Emerald Glow Backgrounds -->
+    <div class="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-emerald-500/10 blur-[130px] pointer-events-none rounded-full"></div>
+    <div class="absolute top-[40%] right-[-100px] w-[400px] h-[400px] bg-emerald-600/5 blur-[150px] pointer-events-none rounded-full"></div>
+
+    <div class="max-w-7xl mx-auto px-4 py-8 relative z-10 space-y-8">
+        
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 glass-card rounded-2xl">
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#10b981]"></span>
+                    <span class="text-xs font-mono-code text-emerald-400 tracking-wider uppercase">System Live // Focus Analyzer</span>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+                    Focus Game <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Dashboard</span>
+                </h1>
+            </div>
+            
+            <button onclick="fetchData()" class="group relative px-5 py-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400 text-emerald-300 font-medium text-sm transition-all duration-300 flex items-center gap-2 active:scale-95 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                <svg class="w-4 h-4 transition-transform group-hover:rotate-180 duration-500 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                <span>SYNC DATA</span>
+            </button>
+        </header>
+
+        <!-- Stat Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <!-- Total Runs -->
+            <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
+                <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/10 transition-all"></div>
+                <p class="text-xs font-mono-code uppercase tracking-wider text-emerald-400/80 mb-2">// TOTAL SESSIONS</p>
+                <div class="flex items-baseline justify-between">
+                    <h2 id="totalGames" class="text-4xl font-extrabold text-white font-mono-code tracking-tight">-</h2>
+                    <span class="text-xs text-gray-500 font-mono-code">RUNS</span>
+                </div>
+            </div>
+
+            <!-- Max Score -->
+            <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
+                <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/10 transition-all"></div>
+                <p class="text-xs font-mono-code uppercase tracking-wider text-emerald-400/80 mb-2">// PEAK FOCUS SCORE</p>
+                <div class="flex items-baseline justify-between">
+                    <h2 id="maxScore" class="text-4xl font-extrabold text-emerald-400 font-mono-code tracking-tight">-</h2>
+                    <span class="text-xs text-gray-500 font-mono-code">/ 30 PTS</span>
+                </div>
+            </div>
+
+            <!-- Avg Reaction Time -->
+            <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
+                <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-teal-500/5 rounded-full blur-xl group-hover:bg-teal-500/10 transition-all"></div>
+                <p class="text-xs font-mono-code uppercase tracking-wider text-emerald-400/80 mb-2">// AVG REACTION TIME</p>
+                <div class="flex items-baseline justify-between">
+                    <h2 id="avgRT" class="text-4xl font-extrabold text-teal-300 font-mono-code tracking-tight">- <span class="text-lg">ms</span></h2>
+                    <span class="text-xs text-gray-500 font-mono-code">LATENCY</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="glass-card p-6 rounded-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-emerald-500/10 pb-4">
+                <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                    <span class="w-1.5 h-4 bg-emerald-400 rounded-full inline-block"></span>
+                    Reaction Time Trend
+                </h2>
+                <span class="text-xs font-mono-code text-gray-400">ms / session</span>
+            </div>
+            <div class="relative h-72 sm:h-80">
+                <canvas id="rtChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Data Table Section -->
+        <div class="glass-card p-6 rounded-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-emerald-500/10 pb-4">
+                <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                    <span class="w-1.5 h-4 bg-emerald-400 rounded-full inline-block"></span>
+                    Session Logs
+                </h2>
+                <span class="text-xs font-mono-code text-emerald-400/70" id="logCount">0 RECORDS FOUND</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-emerald-500/10 text-xs font-mono-code text-emerald-400/70 uppercase">
+                            <th class="py-3 px-4">PLAYER ID</th>
+                            <th class="py-3 px-4">LEVEL</th>
+                            <th class="py-3 px-4">AVG RT</th>
+                            <th class="py-3 px-4">FOCUS SCORE</th>
+                            <th class="py-3 px-4">FALSE ALARMS</th>
+                            <th class="py-3 px-4">STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-emerald-500/5 text-sm font-mono-code">
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-gray-500 animate-pulse">Initializing data stream...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxJ3WjNvhiS-dPHHUp8p55Ijnf60-_XDYqApmy485N98Aaa6CzD2U-ShhVeaCf-p45NnA/exec";
+
+        let chartInstance = null;
+
+        function getValue(row, searchKeys) {
+            for (let rowKey in row) {
+                let cleanRowKey = rowKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+                for (let key of searchKeys) {
+                    let cleanSearchKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (cleanRowKey === cleanSearchKey || cleanRowKey.includes(cleanSearchKey)) {
+                        let val = row[rowKey];
+                        if (val !== "" && val !== null && val !== undefined) {
+                            return val;
+                        }
+                    }
+                }
+            }
+            return '-';
+        }
+
+        async function fetchData() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-emerald-400/60 font-mono-code animate-pulse">Connecting to server & fetching records...</td></tr>';
+
+            try {
+                const response = await fetch(GAS_URL);
+                const data = await response.json();
+
+                if (!data || data.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-gray-500 font-mono-code">NO DATA LOGGED YET</td></tr>';
+                    document.getElementById('logCount').innerText = '0 RECORDS';
+                    return;
+                }
+
+                document.getElementById('logCount').innerText = `${data.length} RECORDS FOUND`;
+
+                updateCards(data);
+                updateChart(data);
+                updateTable(data);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                tableBody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-rose-400 font-mono-code">FAILED TO LOAD DATA // CHECK GAS PERMISSIONS</td></tr>';
+            }
+        }
+
+        function updateCards(data) {
+            document.getElementById('totalGames').innerText = data.length;
+
+            const scores = data.map(d => Number(getValue(d, ['focusscore', 'score', 'focus'])) || 0);
+            const maxFocus = Math.max(...scores);
+            document.getElementById('maxScore').innerText = maxFocus;
+
+            const rtList = data.map(d => Number(getValue(d, ['avgrt', 'reactiontime', 'rt'])) || 0);
+            const validRTs = rtList.filter(rt => rt > 0);
+            const avgReaction = validRTs.length > 0 ? (validRTs.reduce((a, b) => a + b, 0) / validRTs.length) : 0;
+            document.getElementById('avgRT').innerHTML = `${avgReaction.toFixed(0)} <span class="text-lg font-normal text-gray-400">ms</span>`;
+        }
+
+        function updateChart(data) {
+            const ctx = document.getElementById('rtChart').getContext('2d');
+            const labels = data.map((_, i) => `#${i + 1}`);
+            const rtValues = data.map(d => Number(getValue(d, ['avgrt', 'reactiontime', 'rt'])) || 0);
+
+            // Chart Gradient Background
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
+            gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Avg Reaction Time (ms)',
+                        data: rtValues,
+                        borderColor: '#10b981',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#060908',
+                        pointBorderColor: '#34d399',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.35
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(16, 185, 129, 0.05)' },
+                            ticks: { color: '#6b7280', font: { family: 'JetBrains Mono' } }
+                        },
+                        x: {
+                            grid: { color: 'rgba(16, 185, 129, 0.05)' },
+                            ticks: { color: '#6b7280', font: { family: 'JetBrains Mono' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTable(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            data.slice().reverse().forEach(row => {
+                const pId = getValue(row, ['playerid', 'player', 'id']);
+                const lvl = getValue(row, ['level', 'lvl']);
+                const rt = getValue(row, ['avgrt', 'reactiontime', 'rt']);
+                const focus = getValue(row, ['focusscore', 'score', 'focus']);
+                const falseAlarm = getValue(row, ['falsealarms', 'falsealarm', 'alarm']);
+                const status = getValue(row, ['status', 'state']);
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-emerald-500/5 transition-colors group";
+                
+                const isComplete = String(status).toLowerCase().includes('complete');
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 font-semibold text-emerald-300 group-hover:text-emerald-200">${pId}</td>
+                    <td class="py-3.5 px-4 text-gray-300">${lvl}</td>
+                    <td class="py-3.5 px-4 text-teal-300">${rt !== '-' ? rt + ' ms' : '-'}</td>
+                    <td class="py-3.5 px-4 text-emerald-400 font-bold">${focus}</td>
+                    <td class="py-3.5 px-4 text-rose-400/90">${falseAlarm}</td>
+                    <td class="py-3.5 px-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                            isComplete 
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                            : 'bg-gray-800 text-gray-400 border-gray-700'
+                        }">
+                            <span class="w-1.5 h-1.5 rounded-full mr-1.5 ${isComplete ? 'bg-emerald-400' : 'bg-gray-500'}"></span>
+                            ${status}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        fetchData();
+    </script>
+</body>
+</html>
