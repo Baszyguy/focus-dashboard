@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CYBERSTATS // Player Telemetry & Leaderboard</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              black: '#050a07',
+              dark: '#070d0b',
+              card: '#0c1410',
+              border: '#152b1e',
+              glow: '#00ff88',
+              emerald: '#10b981',
+              muted: '#34d399',
+              darktext: '#9ca3af'
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Courier New', 'monospace'],
+            sans: ['Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Chart.js for Visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #070d0b;
+      color: #e2e8f0;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.12), transparent 60%),
+        linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
+      background-size: 100% 100%, 30px 30px, 30px 30px;
+      background-attachment: fixed;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Glassmorphism & Cyber Card Styling */
+    .cyber-card {
+      background: rgba(12, 20, 16, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      transition: all 0.2s ease-in-out;
+    }
+
+    .cyber-card:hover {
+      border-color: rgba(0, 255, 136, 0.4);
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.15);
+    }
+
+    .cyber-border-glow {
+      box-shadow: 0 0 10px rgba(0, 255, 136, 0.2), inset 0 0 10px rgba(0, 255, 136, 0.05);
+    }
+
+    .neon-text-emerald {
+      color: #00ff88;
+      text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    }
+
+    .neon-text-gold {
+      color: #fbbf24;
+      text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+    }
+
+    /* Status LED Indicators */
+    .led-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .led-online {
+      background-color: #00ff88;
+      box-shadow: 0 0 10px #00ff88, 0 0 20px #00ff88;
+      animation: pulse-green 2s infinite;
+    }
+
+    .led-syncing {
+      background-color: #f59e0b;
+      box-shadow: 0 0 10px #f59e0b;
+      animation: pulse-yellow 1s infinite;
+    }
+
+    .led-offline {
+      background-color: #ef4444;
+      box-shadow: 0 0 10px #ef4444;
+    }
+
+    .led-demo {
+      background-color: #3b82f6;
+      box-shadow: 0 0 10px #3b82f6;
+      animation: pulse-blue 2s infinite;
+    }
+
+    @keyframes pulse-green {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+    @keyframes pulse-yellow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    @keyframes pulse-blue {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #070d0b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #152b1e;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #10b981;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-200 antialiased pb-10">
+
+  <!-- Top Navigation & API Configuration Bar -->
+  <header class="sticky top-0 z-50 bg-[#070d0b]/90 backdrop-blur-md border-b border-emerald-900/50 px-4 lg:px-8 py-3 mb-6">
+    <div class="max-w-[1800px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-4">
+      
+      <!-- Brand Logo & Title -->
+      <div class="flex items-center gap-3 w-full xl:w-auto justify-between xl:justify-start">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 cyber-border-glow">
+            <i class="fa-solid font-mono text-xl">⚡</i>
+          </div>
+          <div>
+            <h1 class="font-mono font-bold text-lg md:text-xl tracking-wider text-white flex items-center gap-2">
+              CYBERSTATS <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 border border-emerald-500/30 text-emerald-400 font-normal">// TELEMETRY HUB</span>
+            </h1>
+            <p class="text-xs text-emerald-500/70 font-mono">Realtime Player Leaderboard & Analytic System</p>
+          </div>
+        </div>
+
+        <!-- Connection Status Indicator (Mobile) -->
+        <div class="flex xl:hidden items-center gap-2 bg-emerald-950/50 px-3 py-1.5 rounded-full border border-emerald-800/40">
+          <div id="status-led-mobile" class="led-indicator led-demo"></div>
+          <span id="status-text-mobile" class="text-xs font-mono text-emerald-400">DEMO MODE</span>
+        </div>
+      </div>
+
+      <!-- AppsScript URL Input & Action Buttons -->
+      <div class="flex flex-wrap md:flex-nowrap items-center gap-2 w-full xl:w-auto">
+        
+        <!-- Script URL Input Field -->
+        <div class="relative flex-grow md:w-[480px]">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-600">
+            <i class="fa-solid fa-link text-xs"></i>
+          </span>
+          <input type="text" id="script-url-input" 
+            placeholder="Paste Apps Script Web App URL (https://script.google.com/macros/s/.../exec)" 
+            class="w-full bg-[#0a120d] text-xs font-mono text-emerald-300 pl-9 pr-24 py-2.5 rounded-lg border border-emerald-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder-emerald-800" />
+          <button id="save-url-btn" onclick="saveScriptUrl()" 
+            class="absolute right-1 top-1 bottom-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-black font-semibold text-xs rounded transition-all flex items-center gap-1">
+            <i class="fa-solid fa-floppy-disk"></i> Save & Sync
+          </button>
+        </div>
+
+        <!-- Status & Controls Group -->
+        <div class="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+          
+          <!-- Connection Status (Desktop) -->
+          <div class="hidden xl:flex items-center gap-2 bg-[#0a120d] px-3 py-2 rounded-lg border border-emerald-900/60">
+            <div id="status-led" class="led-indicator led-demo"></div>
+            <span id="status-text" class="text-xs font-mono text-emerald-400">DEMO MODE</span>
+          </div>
+
+          <!-- Demo Toggle Button -->
+          <button id="demo-toggle-btn" onclick="toggleDemoMode()" 
+            class="px-3 py-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-400 border border-emerald-800/60 rounded-lg text-xs font-mono flex items-center gap-2 transition">
+            <i class="fa-solid fa-flask"></i> <span id="demo-btn-label">Use Real Data</span>
+          </button>
+
+          <!-- Auto Refresh Switch (10s) -->
+          <button id="auto-refresh-btn" onclick="toggleAutoRefresh()" 
+            class="px-3 py-2 bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 rounded-lg text-xs font-mono flex items-center gap-2 transition">
+            <i class="fa-solid fa-rotate text-xs" id="auto-icon"></i>
+            <span>Auto (10s): <strong id="auto-status-text" class="text-emerald-300">ON</strong></span>
+          </button>
+
+          <!-- Refresh Now Button -->
+          <button onclick="fetchData()" 
+            class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-black font-bold rounded-lg text-xs font-mono flex items-center gap-1.5 transition active:scale-95 shadow-lg shadow-emerald-950">
+            <i class="fa-solid fa-arrows-rotate" id="refresh-spinner"></i> Refresh
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Container Layout -->
+  <main class="max-w-[1800px] mx-auto px-4 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT SIDEBAR: LEADERBOARD (4 Cols on LG) -->
+    <section class="lg:col-span-4 xl:col-span-4 flex flex-col gap-4">
+      
+      <div class="cyber-card rounded-xl p-5 border border-emerald-900/60 flex-1 flex flex-col">
+        
+        <!-- Leaderboard Header -->
+        <div class="flex items-center justify-between pb-4 border-b border-emerald-900/40 mb-4">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-trophy text-amber-400 text-lg"></i>
+            <h2 class="font-mono font-bold text-white text-base tracking-wide">LEADERBOARD // TOP SCORES</h2>
+          </div>
+          <span id="leaderboard-count-badge" class="text-xs font-mono bg-emerald-950 text-emerald-400 px-2.5 py-1 rounded-md border border-emerald-800/50">
+            0 PLAYERS
+          </span>
+        </div>
+
+        <!-- Leaderboard Search & Filter -->
+        <div class="mb-4 relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-emerald-700"></i>
+          <input type="text" id="leaderboard-search" oninput="renderLeaderboard()" 
+            placeholder="Filter by player name or ID..." 
+            class="w-full bg-[#060b08] text-xs font-mono text-emerald-300 pl-8 pr-3 py-2 rounded-lg border border-emerald-900 focus:border-emerald-500 focus:outline-none" />
+        </div>
+
+        <!-- Leaderboard Scrollable Items -->
+        <div id="leaderboard-container" class="space-y-2.5 overflow-y-auto max-h-[720px] pr-1 flex-1">
+          <div class="text-center py-12 text-emerald-700 font-mono text-xs">
+            <i class="fa-solid fa-spinner fa-spin text-lg mb-2"></i>
+            <p>Loading leaderboard telemetry...</p>
+          </div>
+        </div>
+
+        <!-- Leaderboard Footer Info -->
+        <div class="mt-4 pt-3 border-t border-emerald-900/30 text-[11px] font-mono text-emerald-600/80 flex justify-between items-center">
+          <span><i class="fa-solid fa-shield-halved text-emerald-500"></i> Ranked by Max Total Score</span>
+          <span id="last-updated-time">Updated --:--</span>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- CENTER & RIGHT COLUMN: MAIN DASHBOARD & STATS (8 Cols on LG) -->
+    <section class="lg:col-span-8 xl:col-span-8 flex flex-col gap-6">
+
+      <!-- TOP KPI STATS GRID (6 Cards matching Spreadsheet formula outputs) -->
+      <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
+        
+        <!-- KPI 1: Total Game Rounds -->
+        <div class="cyber-card p-4 rounded-xl border-l-4 border-l-emerald-500 flex flex-col justify-between">
+          <div class="text-[11px] font-mono text-emerald-400/80 uppercase tracking-wider mb-1">
+            จำนวนรอบเล่นทั้งหมด
+          </div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpi-total-rounds" class="text-2xl font-mono font-bold text-white neon-text-emerald">0</span>
+            <i class="fa-solid fa-gamepad text-emerald-800 text-base"></i>
+          </div>
+          <div class="text-[10px] text-emerald-600 font-mono mt-1">Total Executions</div>
+        </div>
+
+        <!-- KPI 2: Total Unique Players -->
+        <div class="cyber-card p-4 rounded-xl border-l-4 border-l-cyan-500 flex flex-col justify-between">
+          <div class="text-[11px] font-mono text-cyan-400/80 uppercase tracking-wider mb-1">
+            จำนวนผู้เล่น
+          </div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpi-total-players" class="text-2xl font-mono font-bold text-cyan-300">0</span>
+            <i class="fa-solid fa-users text-cyan-900 text-base"></i>
+          </div>
+          <div class="text-[10px] text-cyan-600 font-mono mt-1">Unique Player IDs</div>
+        </div>
+
+        <!-- KPI 3: Avg Reaction Time -->
+        <div class="cyber-card p-4 rounded-xl border-l-4 border-l-amber-400 flex flex-col justify-between">
+          <div class="text-[11px] font-mono text-amber-400/80 uppercase tracking-wider mb-1">
+            เวลาตอบสนองเฉลี่ย
+          </div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpi-avg-reaction" class="text-2xl font-mono font-bold text-amber-300">0<span class="text-xs font-normal">ms</span></span>
+            <i class="fa-solid fa-bolt text-amber-900 text-base"></i>
+          </div>
+          <div class="text-[10px] text-amber-600/80 font-mono mt-1">Overall Response Time</div>
+        </div>
+
+        <!-- KPI 4: Avg Max Level -->
+        <div class="cyber-card p-4 rounded-xl border-l-4 border-l-purple-500 flex flex-col justify-between">
+          <div class="text-[11px] font-mono text-purple-400/80 uppercase tracking-wider mb-1">
+            ด่านสูงสุดเฉลี่ย
+          </div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpi-avg-level" class="text-2xl font-mono font-bold text-purple-300">0</span>
+            <i class="fa-solid fa-layer-group text-purple-900 text-base"></i>
+          </div>
+          <div class="text-[10px] text-purple-600 font-mono mt-1">Average Max Level</div>
+        </div>
+
+        <!-- KPI 5: Total False Alarms -->
+        <div class="cyber-card p-4 rounded-xl border-l-4 border-l-rose-500 flex flex-col justify-between">
+          <div class="text-[11px] font-mono text-rose-400/80 uppercase tracking-wider mb-1">
+            ยอดกดพลาดรวม
+          </div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpi-false-alarms" class="text-2xl font-mono font-bold text-rose-300">0</span>
+            <i class="fa-solid fa-triangle-exclamation text-rose-950 text-base"></i>
+          </div>
+          <div class="text-[10px] text-rose-600 font-mono mt-1">Total False Alarms</div>
+        </div>
+
+        <!-- KPI 6: Early Quits -->
+        <div class="cyber-card p-4 rounded-xl border-l-4 border-l-orange-500 flex flex-col justify-between">
+          <div class="text-[11px] font-mono text-orange-400/80 uppercase tracking-wider mb-1">
+            เลิกกลางคัน
+          </div>
+          <div class="flex items-baseline justify-between mt-1">
+            <span id="kpi-quit-early" class="text-2xl font-mono font-bold text-orange-300">0</span>
+            <i class="fa-solid fa-door-open text-orange-950 text-base"></i>
+          </div>
+          <div class="text-[10px] text-orange-600 font-mono mt-1">Quit Early Status</div>
+        </div>
+
+      </div>
+
+      <!-- VISUAL ANALYTICS CHARTS SECTION -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        
+        <!-- Chart 1: Performance Bar / Line Chart -->
+        <div class="xl:col-span-8 cyber-card rounded-xl p-5 border border-emerald-900/60">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-mono font-bold text-sm text-emerald-300 flex items-center gap-2">
+              <i class="fa-solid fa-chart-column text-emerald-400"></i>
+              PERFORMANCE OVERVIEW // Score & Reaction Time
+            </h3>
+            <div class="flex items-center gap-2 text-xs font-mono text-emerald-600">
+              <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> Score</span>
+              <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> React Time (ms)</span>
+            </div>
+          </div>
+          <div class="h-[280px] relative w-full">
+            <canvas id="performanceChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2: Status Breakdown Doughnut Chart -->
+        <div class="xl:col-span-4 cyber-card rounded-xl p-5 border border-emerald-900/60 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-mono font-bold text-sm text-emerald-300 flex items-center gap-2">
+              <i class="fa-solid fa-chart-pie text-emerald-400"></i>
+              STATUS DISTRIBUTION
+            </h3>
+          </div>
+          <div class="h-[220px] relative w-full flex items-center justify-center my-auto">
+            <canvas id="statusChart"></canvas>
+          </div>
+          <div id="status-legend" class="grid grid-cols-2 gap-2 text-[11px] font-mono text-emerald-500 pt-2 border-t border-emerald-900/30 mt-2">
+            <!-- Legend dynamically populated -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- DETAILED RAW DATA TABLE SECTION -->
+      <div class="cyber-card rounded-xl p-5 border border-emerald-900/60">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-3 border-b border-emerald-900/40">
+          <div>
+            <h3 class="font-mono font-bold text-white text-base flex items-center gap-2">
+              <i class="fa-solid fa-table-list text-emerald-400"></i>
+              RAW DATA TELEMETRY LOGS
+            </h3>
+            <p class="text-xs text-emerald-600 font-mono">Full record dataset directly synced from Google Spreadsheet</p>
+          </div>
+
+          <!-- Table Search & Filters -->
+          <div class="flex items-center gap-2">
+            <div class="relative">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-emerald-700"></i>
+              <input type="text" id="raw-table-search" oninput="renderRawTable()" 
+                placeholder="Search raw logs..." 
+                class="bg-[#060b08] text-xs font-mono text-emerald-300 pl-8 pr-3 py-1.5 rounded-lg border border-emerald-900 focus:border-emerald-500 focus:outline-none w-48 md:w-64" />
+            </div>
+
+            <!-- Status Filter Dropdown -->
+            <select id="status-filter" onchange="renderRawTable()" 
+              class="bg-[#060b08] text-xs font-mono text-emerald-300 px-2 py-1.5 rounded-lg border border-emerald-900 focus:border-emerald-500 focus:outline-none">
+              <option value="ALL">All Statuses</option>
+              <option value="Quit Early">Quit Early</option>
+              <option value="Completed">Completed / Normal</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Scrollable Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-emerald-900/80 bg-emerald-950/40 font-mono text-[11px] text-emerald-400 uppercase tracking-wider">
+                <th class="p-3 cursor-pointer hover:text-white transition" onclick="sortTable('playerID')">Player ID <i class="fa-solid fa-sort text-[9px] opacity-60"></i></th>
+                <th class="p-3 cursor-pointer hover:text-white transition" onclick="sortTable('playerName')">Player Name <i class="fa-solid fa-sort text-[9px] opacity-60"></i></th>
+                <th class="p-3 cursor-pointer hover:text-white transition" onclick="sortTable('timestamp')">Timestamp <i class="fa-solid fa-sort text-[9px] opacity-60"></i></th>
+                <th class="p-3 text-center cursor-pointer hover:text-white transition" onclick="sortTable('maxLevel')">Max Level <i class="fa-solid fa-sort text-[9px] opacity-60"></i></th>
+                <th class="p-3 text-right cursor-pointer hover:text-white transition" onclick="sortTable('avgReactionTime')">Avg React (ms) <i class="fa-solid fa-sort text-[9px] opacity-60"></i></th>
+                <th class="p-3 text-right cursor-pointer hover:text-white transition" onclick="sortTable('totalScore')">Total Score <i class="fa-solid fa-sort text-[9px] opacity-60"></i></th>
+                <th class="p-3 text-center cursor-pointer hover:text-white transition" onclick="sortTable('falseAlarms')">False Alarms <i class="fa-solid fa-sort text-[9px] opacity-60"></i></th>
+                <th class="p-3 text-center cursor-pointer hover:text-white transition" onclick="sortTable('status')">Status <i class="fa-solid fa-sort text-[9px] opacity-60"></i></th>
+              </tr>
+            </thead>
+            <tbody id="raw-table-body" class="divide-y divide-emerald-900/30 text-xs font-mono">
+              <!-- Dynamically Populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Table Footer Info -->
+        <div class="mt-4 flex flex-col md:flex-row justify-between items-center text-xs font-mono text-emerald-600/80 gap-2">
+          <span id="raw-table-count">Showing 0 of 0 records</span>
+          <span class="text-[11px]">Tip: Click table headers to sort records dynamically</span>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Notification Toast Container -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div id="toast-content" class="bg-emerald-950 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 font-mono text-xs">
+      <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+      <span id="toast-message">Notification message here</span>
+    </div>
+  </div>
+
+  <script>
+    // ====================================================================================
+    // 🔗 PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE BELOW:
+    // ====================================================================================
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDdSlAe1ossRgsBnpEiSGRE1YtUeY7nWCE_RNu6__Xc8kjxbwjfVZtJ7zMqGVNx79_/exec";
+    // ====================================================================================
+
+    // Global Application State Variables
+    let rawData = [];
+    let isDemoMode = false;
+    let autoRefreshInterval = null;
+    let autoRefreshEnabled = true;
+    let sortColumn = 'totalScore';
+    let sortAscending = false;
+
+    // Chart instances
+    let performanceChart = null;
+    let statusChart = null;
+
+    // Default Mock/Demo Dataset matching user's spreadsheet structure
+    const DEMO_DATA = [
+      {
+        playerID: "Player_9566",
+        playerName: "ผมนะ",
+        timestamp: "Tue Sep 15 2026 19:59:30 GMT+0700",
+        maxLevel: "2",
+        avgReactionTime: "309.2",
+        totalScore: "1",
+        falseAlarms: "0",
+        status: "Quit Early"
+      },
+      {
+        playerID: "ID_8842",
+        playerName: "CyberNinja",
+        timestamp: "Tue Sep 15 2026 20:05:12 GMT+0700",
+        maxLevel: "12",
+        avgReactionTime: "185.4",
+        totalScore: "1540",
+        falseAlarms: "1",
+        status: "Completed"
+      },
+      {
+        playerID: "ID_3310",
+        playerName: "FastHands_TH",
+        timestamp: "Tue Sep 15 2026 20:10:45 GMT+0700",
+        maxLevel: "15",
+        avgReactionTime: "162.1",
+        totalScore: "2100",
+        falseAlarms: "0",
+        status: "Completed"
+      },
+      {
+        playerID: "ID_7719",
+        playerName: "NeonRider",
+        timestamp: "Tue Sep 15 2026 20:14:02 GMT+0700",
+        maxLevel: "8",
+        avgReactionTime: "245.8",
+        totalScore: "890",
+        falseAlarms: "2",
+        status: "Quit Early"
+      },
+      {
+        playerID: "ID_0042",
+        playerName: "MatrixRunner",
+        timestamp: "Tue Sep 15 2026 20:18:20 GMT+0700",
+        maxLevel: "10",
+        avgReactionTime: "210.5",
+        totalScore: "1250",
+        falseAlarms: "0",
+        status: "Completed"
+      },
+      {
+        playerID: "ID_9911",
+        playerName: "GamerPro99",
+        timestamp: "Tue Sep 15 2026 20:22:15 GMT+0700",
+        maxLevel: "5",
+        avgReactionTime: "298.0",
+        totalScore: "450",
+        falseAlarms: "3",
+        status: "Quit Early"
+      }
+    ];
+
+    // On Page Load Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      // Determine active URL from LocalStorage or the explicit APPS_SCRIPT_URL variable
+      const savedUrl = localStorage.getItem('gas_telemetry_url');
+      const activeUrl = savedUrl || APPS_SCRIPT_URL;
+
+      const inputElem = document.getElementById('script-url-input');
+      if (inputElem) {
+        inputElem.value = activeUrl;
+      }
+
+      // If URL is default placeholder, prompt user and default to demo mode
+      if (!activeUrl || activeUrl.includes("YOUR_APPS_SCRIPT_ID_HERE")) {
+        isDemoMode = true;
+      }
+
+      updateDemoUIState();
+      initCharts();
+      fetchData();
+
+      if (autoRefreshEnabled) {
+        startAutoRefresh();
+      }
+    });
+
+    // Save Script URL from Top Bar Input
+    function saveScriptUrl() {
+      const urlInput = document.getElementById('script-url-input').value.trim();
+      if (!urlInput || urlInput.includes("YOUR_APPS_SCRIPT_ID_HERE")) {
+        showToast('Please enter a valid Google Apps Script Web App URL!', 'error');
+        return;
+      }
+      
+      localStorage.setItem('gas_telemetry_url', urlInput);
+      isDemoMode = false;
+      updateDemoUIState();
+      showToast('Apps Script URL saved & syncing data...', 'success');
+      fetchData();
+    }
+
+    // Toggle Demo / Live Mode
+    function toggleDemoMode() {
+      isDemoMode = !isDemoMode;
+      updateDemoUIState();
+      showToast(isDemoMode ? 'Switched to Demo Data Mode' : 'Switched to Live Apps Script Sync Mode', 'info');
+      fetchData();
+    }
+
+    function updateDemoUIState() {
+      const demoBtnLabel = document.getElementById('demo-btn-label');
+      const ledDesktop = document.getElementById('status-led');
+      const textDesktop = document.getElementById('status-text');
+      const ledMobile = document.getElementById('status-led-mobile');
+      const textMobile = document.getElementById('status-text-mobile');
+
+      if (isDemoMode) {
+        if (demoBtnLabel) demoBtnLabel.textContent = "Use Live Data";
+        setConnectionStatus('demo', 'DEMO MODE');
+      } else {
+        if (demoBtnLabel) demoBtnLabel.textContent = "Use Demo Data";
+      }
+    }
+
+    // Fetch Data Function (Supports both Google Apps Script doGet JSON & Demo Data fallback)
+    async function fetchData() {
+      const spinner = document.getElementById('refresh-spinner');
+      if (spinner) spinner.classList.add('fa-spin');
+
+      setConnectionStatus('syncing', 'SYNCING...');
+
+      const savedUrl = localStorage.getItem('gas_telemetry_url');
+      const targetUrl = savedUrl || APPS_SCRIPT_URL;
+
+      // Check if URL is invalid or in demo mode
+      if (isDemoMode || !targetUrl || targetUrl.includes("YOUR_APPS_SCRIPT_ID_HERE")) {
+        setTimeout(() => {
+          rawData = [...DEMO_DATA];
+          processData();
+          setConnectionStatus('demo', 'DEMO MODE');
+          if (spinner) spinner.classList.remove('fa-spin');
+        }, 300);
+        return;
+      }
+
+      try {
+        const response = await fetch(targetUrl, {
+          method: 'GET',
+          redirect: 'follow'
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP Status Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (Array.isArray(data)) {
+          rawData = data;
+          processData();
+          setConnectionStatus('online', 'LIVE ONLINE');
+          showToast(`Synced ${data.length} telemetry records from Google Sheet`, 'success');
+        } else {
+          throw new Error('Returned data is not a valid JSON array');
+        }
+      } catch (error) {
+        console.error('Fetch Error:', error);
+        setConnectionStatus('offline', 'OFFLINE / ERROR');
+        showToast('Sync Failed! Check URL & CORS settings. Displaying fallback data.', 'error');
+        rawData = [...DEMO_DATA];
+        processData();
+      } finally {
+        if (spinner) spinner.classList.remove('fa-spin');
+      }
+    }
+
+    // Update LED Indicator
+    function setConnectionStatus(status, text) {
+      const ledD = document.getElementById('status-led');
+      const textD = document.getElementById('status-text');
+      const ledM = document.getElementById('status-led-mobile');
+      const textM = document.getElementById('status-text-mobile');
+
+      let ledClass = 'led-indicator ';
+      let textClass = 'text-xs font-mono ';
+
+      if (status === 'online') {
+        ledClass += 'led-online';
+        textClass += 'text-emerald-400';
+      } else if (status === 'syncing') {
+        ledClass += 'led-syncing';
+        textClass += 'text-amber-400';
+      } else if (status === 'offline') {
+        ledClass += 'led-offline';
+        textClass += 'text-rose-400';
+      } else {
+        ledClass += 'led-demo';
+        textClass += 'text-blue-400';
+      }
+
+      if (ledD) ledD.className = ledClass;
+      if (textD) {
+        textD.textContent = text;
+        textD.className = textClass;
+      }
+      if (ledM) ledM.className = ledClass;
+      if (textM) {
+        textM.textContent = text;
+        textM.className = textClass;
+      }
+    }
+
+    // Process & Render All View Modules
+    function processData() {
+      const now = new Date();
+      document.getElementById('last-updated-time').textContent = `Updated ${now.toLocaleTimeString()}`;
+
+      calculateKPIs();
+      renderLeaderboard();
+      renderRawTable();
+      updateCharts();
+    }
+
+    // Calculate KPI Totals matching Spreadsheet Formulas
+    function calculateKPIs() {
+      const totalRounds = rawData.length;
+
+      // Count Unique Players
+      const uniquePlayersSet = new Set(rawData.map(r => String(r.playerID || '').trim()).filter(Boolean));
+      const totalUniquePlayers = uniquePlayersSet.size;
+
+      let sumReaction = 0;
+      let sumLevel = 0;
+      let sumFalseAlarms = 0;
+      let quitEarlyCount = 0;
+
+      rawData.forEach(item => {
+        sumReaction += Number(item.avgReactionTime) || 0;
+        sumLevel += Number(item.maxLevel) || 0;
+        sumFalseAlarms += Number(item.falseAlarms) || 0;
+
+        const stat = String(item.status || '').toLowerCase();
+        if (stat.includes('quit') || stat.includes('ยกเลิก')) {
+          quitEarlyCount++;
+        }
+      });
+
+      const avgReaction = totalRounds > 0 ? (sumReaction / totalRounds).toFixed(1) : 0;
+      const avgLevel = totalRounds > 0 ? (sumLevel / totalRounds).toFixed(1) : 0;
+
+      // Update DOM
+      document.getElementById('kpi-total-rounds').textContent = totalRounds.toLocaleString();
+      document.getElementById('kpi-total-players').textContent = totalUniquePlayers.toLocaleString();
+      document.getElementById('kpi-avg-reaction').innerHTML = `${avgReaction}<span class="text-xs font-normal text-amber-500">ms</span>`;
+      document.getElementById('kpi-avg-level').textContent = avgLevel;
+      document.getElementById('kpi-false-alarms').textContent = sumFalseAlarms.toLocaleString();
+      document.getElementById('kpi-quit-early').textContent = quitEarlyCount.toLocaleString();
+    }
+
+    // Render Left Leaderboard (Sorted by highest score)
+    function renderLeaderboard() {
+      const container = document.getElementById('leaderboard-container');
+      const search = document.getElementById('leaderboard-search').value.toLowerCase().trim();
+
+      if (!rawData || rawData.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 text-emerald-800 font-mono text-xs">
+            <i class="fa-solid fa-ghost text-2xl mb-2"></i>
+            <p>No player telemetry records found.</p>
+          </div>
+        `;
+        document.getElementById('leaderboard-count-badge').textContent = `0 PLAYERS`;
+        return;
+      }
+
+      // Group by PlayerID to extract each player's highest score performance (matching doGet logic)
+      const playerMap = {};
+      rawData.forEach(row => {
+        const pId = String(row.playerID || 'UNKNOWN').trim();
+        const score = Number(row.totalScore) || 0;
+
+        if (!playerMap[pId] || score > (playerMap[pId]._numericScore || 0)) {
+          playerMap[pId] = {
+            ...row,
+            _numericScore: score
+          };
+        }
+      });
+
+      let leaderboardArray = Object.values(playerMap);
+
+      // Sort by score descending
+      leaderboardArray.sort((a, b) => (Number(b.totalScore) || 0) - (Number(a.totalScore) || 0));
+
+      // Filter by search term
+      if (search) {
+        leaderboardArray = leaderboardArray.filter(item => 
+          String(item.playerName || '').toLowerCase().includes(search) ||
+          String(item.playerID || '').toLowerCase().includes(search)
+        );
+      }
+
+      document.getElementById('leaderboard-count-badge').textContent = `${leaderboardArray.length} PLAYERS`;
+
+      if (leaderboardArray.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-emerald-700 font-mono text-xs">No matching players found.</div>`;
+        return;
+      }
+
+      let html = '';
+      leaderboardArray.forEach((player, index) => {
+        const rank = index + 1;
+        
+        let rankBadge = `<span class="w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs bg-emerald-950 text-emerald-400 border border-emerald-800">#${rank}</span>`;
+        let borderStyle = "border-emerald-900/40 hover:border-emerald-500/50";
+        let glowScore = "text-emerald-400";
+
+        if (rank === 1) {
+          rankBadge = `<span class="w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-[0_0_10px_rgba(251,191,36,0.3)]"><i class="fa-solid fa-crown text-[10px]"></i></span>`;
+          borderStyle = "border-amber-500/40 bg-gradient-to-r from-amber-950/20 to-transparent";
+          glowScore = "neon-text-gold";
+        } else if (rank === 2) {
+          rankBadge = `<span class="w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs bg-slate-400/20 text-slate-200 border border-slate-400/50">2</span>`;
+          borderStyle = "border-slate-500/30";
+        } else if (rank === 3) {
+          rankBadge = `<span class="w-6 h-6 rounded flex items-center justify-center font-mono font-bold text-xs bg-amber-800/30 text-amber-500 border border-amber-800/50">3</span>`;
+          borderStyle = "border-amber-800/30";
+        }
+
+        html += `
+          <div class="p-3 rounded-lg bg-[#080e0a] border ${borderStyle} transition duration-200 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5 min-w-0">
+              ${rankBadge}
+              <div class="truncate">
+                <div class="font-bold text-xs text-white truncate flex items-center gap-1.5">
+                  <span>${escapeHtml(player.playerName || 'Unknown')}</span>
+                  <span class="text-[10px] text-emerald-600 font-mono font-normal">(${escapeHtml(player.playerID || '')})</span>
+                </div>
+                <div class="text-[10px] text-emerald-600/80 font-mono flex items-center gap-2 mt-0.5">
+                  <span><i class="fa-solid fa-bolt text-amber-500/80"></i> ${player.avgReactionTime || '0'}ms</span>
+                  <span>•</span>
+                  <span>Lvl ${player.maxLevel || '0'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-right flex-shrink-0">
+              <div class="font-mono font-extrabold text-sm ${glowScore}">
+                ${Number(player.totalScore || 0).toLocaleString()}
+              </div>
+              <div class="text-[9px] text-emerald-700 font-mono uppercase">PTS</div>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    // Render Detailed Raw Data Table
+    function renderRawTable() {
+      const tbody = document.getElementById('raw-table-body');
+      const search = document.getElementById('raw-table-search').value.toLowerCase().trim();
+      const statusFilter = document.getElementById('status-filter').value;
+
+      let list = [...rawData];
+
+      // Filter Status
+      if (statusFilter !== 'ALL') {
+        if (statusFilter === 'Quit Early') {
+          list = list.filter(item => String(item.status || '').toLowerCase().includes('quit') || String(item.status || '').includes('ยกเลิก'));
+        } else {
+          list = list.filter(item => !String(item.status || '').toLowerCase().includes('quit') && !String(item.status || '').includes('ยกเลิก'));
+        }
+      }
+
+      // Filter Search
+      if (search) {
+        list = list.filter(item => 
+          String(item.playerID || '').toLowerCase().includes(search) ||
+          String(item.playerName || '').toLowerCase().includes(search) ||
+          String(item.status || '').toLowerCase().includes(search)
+        );
+      }
+
+      // Dynamic Column Sorting
+      list.sort((a, b) => {
+        let valA = a[sortColumn];
+        let valB = b[sortColumn];
+
+        if (!isNaN(Number(valA)) && !isNaN(Number(valB))) {
+          valA = Number(valA);
+          valB = Number(valB);
+        } else {
+          valA = String(valA || '').toLowerCase();
+          valB = String(valB || '').toLowerCase();
+        }
+
+        if (valA < valB) return sortAscending ? -1 : 1;
+        if (valA > valB) return sortAscending ? 1 : -1;
+        return 0;
+      });
+
+      document.getElementById('raw-table-count').textContent = `Showing ${list.length} of ${rawData.length} records`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="text-center py-8 text-emerald-800 font-mono">
+              No matching records in raw dataset.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      let html = '';
+      list.forEach(item => {
+        const statusStr = String(item.status || 'Active');
+        const isQuit = statusStr.toLowerCase().includes('quit') || statusStr.includes('ยกเลิก');
+
+        const statusBadge = isQuit
+          ? `<span class="px-2 py-0.5 rounded text-[10px] bg-amber-950/80 text-amber-400 border border-amber-700/50"><i class="fa-solid fa-triangle-exclamation"></i> Quit Early</span>`
+          : `<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-950/80 text-emerald-300 border border-emerald-700/50"><i class="fa-solid fa-check"></i> Completed</span>`;
+
+        html += `
+          <tr class="hover:bg-emerald-950/30 transition">
+            <td class="p-3 font-semibold text-emerald-300">${escapeHtml(item.playerID || '-')}</td>
+            <td class="p-3 text-white font-medium">${escapeHtml(item.playerName || 'Unknown')}</td>
+            <td class="p-3 text-emerald-600 text-[11px]">${escapeHtml(item.timestamp || '-')}</td>
+            <td class="p-3 text-center text-purple-300 font-bold">${item.maxLevel || '0'}</td>
+            <td class="p-3 text-right text-amber-300">${item.avgReactionTime || '0'} ms</td>
+            <td class="p-3 text-right text-emerald-400 font-bold">${Number(item.totalScore || 0).toLocaleString()}</td>
+            <td class="p-3 text-center text-rose-400">${item.falseAlarms || '0'}</td>
+            <td class="p-3 text-center">${statusBadge}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function sortTable(column) {
+      if (sortColumn === column) {
+        sortAscending = !sortAscending;
+      } else {
+        sortColumn = column;
+        sortAscending = false;
+      }
+      renderRawTable();
+    }
+
+    // Initialize Chart.js Graphs
+    function initCharts() {
+      const ctxPerf = document.getElementById('performanceChart').getContext('2d');
+      performanceChart = new Chart(ctxPerf, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Total Score',
+              data: [],
+              backgroundColor: 'rgba(0, 255, 136, 0.4)',
+              borderColor: '#00ff88',
+              borderWidth: 1.5,
+              borderRadius: 4,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Avg Reaction (ms)',
+              data: [],
+              type: 'line',
+              borderColor: '#fbbf24',
+              backgroundColor: 'rgba(251, 191, 36, 0.2)',
+              borderWidth: 2,
+              pointBackgroundColor: '#fbbf24',
+              pointRadius: 4,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0c1410',
+              titleColor: '#00ff88',
+              bodyColor: '#e2e8f0',
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              borderWidth: 1,
+              padding: 10
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#059669', font: { family: 'JetBrains Mono', size: 10 } },
+              grid: { color: 'rgba(16, 185, 129, 0.05)' }
+            },
+            y: {
+              type: 'linear',
+              position: 'left',
+              ticks: { color: '#00ff88', font: { family: 'JetBrains Mono', size: 10 } },
+              grid: { color: 'rgba(16, 185, 129, 0.08)' },
+              title: { display: true, text: 'Score', color: '#00ff88', font: { size: 10 } }
+            },
+            y1: {
+              type: 'linear',
+              position: 'right',
+              ticks: { color: '#fbbf24', font: { family: 'JetBrains Mono', size: 10 } },
+              grid: { drawOnChartArea: false },
+              title: { display: true, text: 'Reaction Time (ms)', color: '#fbbf24', font: { size: 10 } }
+            }
+          }
+        }
+      });
+
+      const ctxStatus = document.getElementById('statusChart').getContext('2d');
+      statusChart = new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+          labels: ['Completed', 'Quit Early'],
+          datasets: [{
+            data: [0, 0],
+            backgroundColor: [
+              'rgba(16, 185, 129, 0.8)',
+              'rgba(245, 158, 11, 0.8)'
+            ],
+            borderColor: '#0c1410',
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0c1410',
+              titleColor: '#00ff88',
+              bodyColor: '#e2e8f0',
+              borderColor: 'rgba(16, 185, 129, 0.4)',
+              borderWidth: 1
+            }
+          }
+        }
+      });
+    }
+
+    function updateCharts() {
+      if (!performanceChart || !statusChart) return;
+
+      const playerMap = {};
+      rawData.forEach(row => {
+        const name = row.playerName || row.playerID || 'Player';
+        const score = Number(row.totalScore) || 0;
+        const react = Number(row.avgReactionTime) || 0;
+
+        if (!playerMap[name] || score > playerMap[name].score) {
+          playerMap[name] = { score, react };
+        }
+      });
+
+      const topPlayers = Object.entries(playerMap)
+        .sort((a, b) => b[1].score - a[1].score)
+        .slice(0, 8);
+
+      performanceChart.data.labels = topPlayers.map(p => p[0]);
+      performanceChart.data.datasets[0].data = topPlayers.map(p => p[1].score);
+      performanceChart.data.datasets[1].data = topPlayers.map(p => p[1].react);
+      performanceChart.update();
+
+      let quitCount = 0;
+      let completeCount = 0;
+
+      rawData.forEach(item => {
+        const stat = String(item.status || '').toLowerCase();
+        if (stat.includes('quit') || stat.includes('ยกเลิก')) {
+          quitCount++;
+        } else {
+          completeCount++;
+        }
+      });
+
+      statusChart.data.datasets[0].data = [completeCount, quitCount];
+      statusChart.update();
+
+      const legendBox = document.getElementById('status-legend');
+      legendBox.innerHTML = `
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+          <span>Completed: <strong class="text-white">${completeCount}</strong></span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+          <span>Quit Early: <strong class="text-white">${quitCount}</strong></span>
+        </div>
+      `;
+    }
+
+    // Auto Refresh Logic (Every 10 seconds)
+    function toggleAutoRefresh() {
+      autoRefreshEnabled = !autoRefreshEnabled;
+      const statusText = document.getElementById('auto-status-text');
+      const icon = document.getElementById('auto-icon');
+
+      if (autoRefreshEnabled) {
+        statusText.textContent = "ON";
+        statusText.className = "text-emerald-300";
+        icon.classList.add('fa-spin');
+        startAutoRefresh();
+        showToast('Auto-refresh (10s polling) enabled', 'info');
+      } else {
+        statusText.textContent = "OFF";
+        statusText.className = "text-rose-400";
+        icon.classList.remove('fa-spin');
+        stopAutoRefresh();
+        showToast('Auto-refresh paused', 'info');
+      }
+    }
+
+    function startAutoRefresh() {
+      stopAutoRefresh();
+      autoRefreshInterval = setInterval(() => {
+        fetchData();
+      }, 10000);
+    }
+
+    function stopAutoRefresh() {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+    }
+
+    // Custom UI Notification Toast
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastContent = document.getElementById('toast-content');
+      const toastIcon = document.getElementById('toast-icon');
+      const toastMsg = document.getElementById('toast-message');
+
+      toastMsg.textContent = message;
+
+      if (type === 'error') {
+        toastContent.className = "bg-rose-950 border border-rose-500/50 text-rose-200 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 font-mono text-xs";
+        toastIcon.className = "fa-solid fa-circle-xmark text-rose-400 text-base";
+      } else if (type === 'info') {
+        toastContent.className = "bg-blue-950 border border-blue-500/50 text-blue-200 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 font-mono text-xs";
+        toastIcon.className = "fa-solid fa-circle-info text-blue-400 text-base";
+      } else {
+        toastContent.className = "bg-emerald-950 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 font-mono text-xs";
+        toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-base";
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    // HTML Escaping Utility
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, function(m) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[m];
+      });
+    }
+  </script>
+</body>
+</html>
